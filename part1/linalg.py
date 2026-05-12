@@ -171,6 +171,11 @@ class Matrix:
 		]
 		return Matrix(result_data)
 
+	def __add__(self, other):
+		pass
+	
+	def __sub__(self, other):
+		pass
 
 
 # Testing

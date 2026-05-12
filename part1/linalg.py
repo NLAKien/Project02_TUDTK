@@ -7,10 +7,12 @@ from operator import index
 class Vector:
 	"""
 	Vector objects by default represent column vectors, if row vector is wanted, let `is_row=True`
+	Display of a column vector: (x_1, x_2, ..., x_n)
+	Display of a row vector: (x_1 x_2 ... x_n)
 	"""
 	def __init__(self, components, is_row=False):
 		self.data = list(components)
-		self.shape = (len(self.data), 1) if is_row == False else len(1, self.data)
+		self.shape = (len(self.data), 1) if is_row == False else (1, len(self.data))
 	
 	def transpose(self) -> Vector:
 		ret = Vector(self.data)
@@ -18,7 +20,7 @@ class Vector:
 		return ret
 
 	def __repr__(self):
-		sep = ",    " if self.shape[0] == 1 else "    "
+		sep = ",    " if self.shape[1] == 1 else "    "
 		s = sep.join(f"{x:.4f}" for x in self.data)
 		return f"({s})"
 	
@@ -26,10 +28,13 @@ class Vector:
 		sep = ",    " if self.shape[1] == 1 else "    "
 		s = sep.join(f"{x:.2f}" for x in self.data)
 		return f"({s})"
-	
+
+	def __iter__(self):
+		return iter(self.data)
+
 	# -- OPERATOR OVERLOADING --
-	def __getitem__(self, id):
-		return self.data[id]
+	def __getitem__(self, idx):
+		return self.data[idx]
 
 	def __add__(self, other):
 		if self.shape != other.shape:
@@ -61,31 +66,32 @@ class Matrix:
 		num_row = len(data)
 		num_col = len(data[0])
 		self.shape = (num_row, num_col)
-		self.rows = [Vector(row[:]) for row in data]
-		print([row[j] for row in data] for j in range(num_col))
-		# self.cols = [Vector([row[j] for row in data] for j in range(num_col))]
+		self.rows = [Vector(row[:], is_row=True) for row in data]
+		self.cols = [Vector(row[j] for row in data) for j in range(num_col)]
 
 	@classmethod
 	def diag(cls, data: list[float]):
-		n = len(data)
-		return cls([
-			[data[i] if i == j else 0 for j in range(n)]
-			for i in range(n)
-		])
-
+	    n = len(data)
+	    # create raw 2D list of floats
+	    grid = [[data[i] if i == j else 0 for j in range(n)] for i in range(n)]
+	    return cls(grid)
+	
 	@classmethod
 	def identity(cls, n: int):
-		return cls([
-			[1 if i == j else 0 for j in range(n)]
-			for i in range(n)
-		])
+	    # just call diag with ones
+	    return cls.diag([1] * n)
+
 	""" END CONSTRUCTORS """
 
 	def __str__(self):
-		return "\n".join(
-			"[ " + " ".join(f"{x:.2f}" for x in row) + " ]"
-			for row in self.data
-		)
+		return "[" + ",\n ".join(f"{row}" for row in self.rows) + "]"
+
+	def __getitem__(self, idx):
+		return self.rows[idx]
+	
+	def __iter__(self):
+		return iter(self.rows)
+
 
 	""" START ATTRIBUTE CHECKING """
 	def is_ref(self):
@@ -95,8 +101,7 @@ class Matrix:
 		if later pivot column index < max column index of all previous pivot column
 		"""
 		pivot_col = -1
-		mat = self.data
-		for row in mat:
+		for row in self:
 			for j in range(self.shape[1]):
 				if row[j]:
 					if j <= pivot_col:
@@ -106,50 +111,25 @@ class Matrix:
 		return True
 
 	def is_diagonal(self):
-		mat = self.data
 		for i in range(self.shape[0]):
 			for j in range(self.shape[1]):
-				if i != j and mat[i][j]:
+				if i != j and self[i][j]:
 					return False
 		return True
 	
-	def __getitem__(self, index):
-		return self.data[index]
-
-	def transpose(self):
-		# Tạo dữ liệu mới bằng cách đổi hàng thành cột
-		new_data = [[self.data[j][i] for j in range(self.shape[0])] for i in range(self.shape[1])]
-		# Trả về một đối tượng Matrix mới (đảm bảo file này đã import Matrix hoặc dùng chính class này)
-		return Matrix(new_data)
-
-	def __mul__(self, other):
-		# 1. Kiểm tra điều kiện kích thước
-		if self.shape[1] != other.shape[0]:
-			raise ValueError(f"Không thể nhân ma trận: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
-
-		# 2. Tạo ma trận rỗng (m hàng của A x p cột của B)
-		# Sử dụng list comprehension để tối ưu tốc độ trong Python thuần
-		result_data = [
-			[
-				sum(self.data[i][k] * other.data[k][j] for k in range(self.shape[1]))
-				for j in range(other.shape[1])
-			]
-			for i in range(self.shape[0])
-		]
-
-		# 3. Trả về đối tượng Matrix mới
-		return Matrix(result_data)
-
 	def is_identity(self):
-		mat = self.data
 		for i in range(self.shape[0]):
 			for j in range(self.shape[1]):
-				if (i != j and mat[i][j]) or (i == j and mat[i][j] != 1):
+				if (i != j and self[i][j]) or (i == j and self[i][j] != 1):
 					return False
 		return True
 	""" END ATTRIBUTE CHECKING """
 
 	""" START : GENERATE NEW MATRIX """
+	def transpose(self):
+		new_data = [[self[j][i] for j in range(self.shape[0])] for i in range(self.shape[1])]
+		return Matrix(new_data)
+
 	def augment(self, other = None):
 		"""
 		return augmented matrix [self | other]
@@ -175,24 +155,21 @@ class Matrix:
 			selected_cols = list(range(start_col, end_col + 1))
 		
 		selected_cols.sort()
-		return Matrix([[row[j] for j in selected_cols] for row in self.data])
+		return Matrix([[row[j] for j in selected_cols] for row in self.data])	# NEED CHANGE
 
-	def inverse(self):
-		# return self^{-1}
-		from part1.inverse import inverse
-		return inverse(self)
+	# --- OPERATOR OVERLOADING ---
+	def __mul__(self, other):
+		if self.shape[1] != other.shape[0]:
+			raise ValueError(f"Không thể nhân ma trận: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
 
-	def gaussian_eliminate(self, b):
-		# return (REF matrix of self, solution, number of steps)
-		return gauss.gaussian_eliminate(self.data, b)
-	
-	def gauss_jordan_eliminate(self):
-		# return RREF matrix of self
-		from part1.inverse import gauss_jordan_eliminate as gj
-		return gj(self)
-	""" END : GENERATE NEW MATRIX """
-
-	""" START : CALCULATE ON MATRIX """
+		result_data = [
+			[
+				sum(self[i][k] * other[k][j] for k in range(self.shape[1]))
+				for j in range(other.shape[1])
+			]
+			for i in range(self.shape[0])
+		]
+		return Matrix(result_data)
 
 
 
@@ -202,5 +179,16 @@ if __name__ == "__main__":
 		[1,2,3],
 		[6,5,4]
 	])
-print(f"mat.rows = {mat.rows}", sep="\n")
-# print(f"mat.cols = {mat.cols}", sep="\n")
+	print(f"mat.rows = {mat.rows}", sep="\n")
+	print(f"mat.cols = {mat.cols}", sep="\n")
+	print(f"mat =\n{mat}", sep="\n")
+	print(f"mat^T =\n{mat.transpose()}", sep="\n")
+	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
+	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
+	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
+
+	iden = Matrix.identity(4)
+	print(f"iden =\n{iden}", sep="\n")
+	print(f"iden is_ref = {iden.is_ref()}", sep="\n")
+	print(f"iden is_identity = {iden.is_identity()}", sep="\n")
+	print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")

@@ -1,37 +1,69 @@
 def is_zero(x: float) -> bool:
 	return abs(x) < 1e-10
 
-""" START : ELEMENTARY ROW OPERATIONS """
-def row_multiply(row: list, k):
-	"""
-	row <- row * k
-	"""
-	n = len(row)
-	for i in range(n):
-		row[i] *= k
-	return
-
-def row_add(row: list, k, another: list):
-	"""
-	row <- row + (k * another)
-	"""
-	if len(row) != len(another):
-		raise ValueError("Both rows must have the same length")
-
-	n = len(row)
-	for i in range(n):
-		row[i] += k*another[i]
-""" END   : ELEMENTARY ROW OPERATIONS """
-
 
 from operator import index
+
+class Vector:
+	"""
+	Vector objects by default represent column vectors, if row vector is wanted, let `is_row=True`
+	"""
+	def __init__(self, components, is_row=False):
+		self.data = list(components)
+		self.shape = (len(self.data), 1) if is_row == False else len(1, self.data)
+	
+	def transpose(self) -> Vector:
+		ret = Vector(self.data)
+		ret.shape = (self.shape[1], self.shape[0])
+		return ret
+
+	def __repr__(self):
+		sep = ",    " if self.shape[0] == 1 else "    "
+		s = sep.join(f"{x:.4f}" for x in self.data)
+		return f"({s})"
+	
+	def __str__(self):
+		sep = ",    " if self.shape[1] == 1 else "    "
+		s = sep.join(f"{x:.2f}" for x in self.data)
+		return f"({s})"
+	
+	# -- OPERATOR OVERLOADING --
+	def __getitem__(self, id):
+		return self.data[id]
+
+	def __add__(self, other):
+		if self.shape != other.shape:
+				raise ValueError(f"Không thể cộng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+		num = max(self.shape[0], self.shape[1])
+		data = [self[i] + other[i] for i in range(num)]
+		return Vector(data)
+
+	def __sub__(self, other):
+		if self.shape != other.shape:
+				raise ValueError(f"Không thể trừ 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+		num = max(self.shape[0], self.shape[1])
+		data = [self[i] - other[i] for i in range(num)]
+		return Vector(data)
+
+	def __mul__(self, other):
+		if self.shape != other.shape:
+				raise ValueError(f"Không thể nhân vô hướng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+		num = max(self.shape[0], self.shape[1])
+		ret = 0
+		for i in range(num):
+			ret += self[i] * other[i]
+		return ret
+
 
 class Matrix:
 	""" START CONSTRUCTORS """
 	def __init__(self, data: list[list[float]]):
-		self.data = [row[:] for row in data]
-		self.num_row = len(data)
-		self.num_col = len(data[0])
+		num_row = len(data)
+		num_col = len(data[0])
+		self.shape = (num_row, num_col)
+		self.rows = [Vector(row[:]) for row in data]
+		print([row[j] for row in data] for j in range(num_col))
+		# self.cols = [Vector([row[j] for row in data] for j in range(num_col))]
 
 	@classmethod
 	def diag(cls, data: list[float]):
@@ -55,9 +87,6 @@ class Matrix:
 			for row in self.data
 		)
 
-	def shape(self):
-		return (self.rows, self.cols)
-
 	""" START ATTRIBUTE CHECKING """
 	def is_ref(self):
 		# return True if `self` is REF
@@ -68,7 +97,7 @@ class Matrix:
 		pivot_col = -1
 		mat = self.data
 		for row in mat:
-			for j in range(self.num_col):
+			for j in range(self.shape[1]):
 				if row[j]:
 					if j <= pivot_col:
 						return False
@@ -78,8 +107,8 @@ class Matrix:
 
 	def is_diagonal(self):
 		mat = self.data
-		for i in range(self.num_row):
-			for j in range(self.num_col):
+		for i in range(self.shape[0]):
+			for j in range(self.shape[1]):
 				if i != j and mat[i][j]:
 					return False
 		return True
@@ -89,23 +118,23 @@ class Matrix:
 
 	def transpose(self):
 		# Tạo dữ liệu mới bằng cách đổi hàng thành cột
-		new_data = [[self.data[j][i] for j in range(self.num_row)] for i in range(self.num_col)]
+		new_data = [[self.data[j][i] for j in range(self.shape[0])] for i in range(self.shape[1])]
 		# Trả về một đối tượng Matrix mới (đảm bảo file này đã import Matrix hoặc dùng chính class này)
 		return Matrix(new_data)
 
-	def matmul(self, other):
+	def __mul__(self, other):
 		# 1. Kiểm tra điều kiện kích thước
-		if self.num_col != other.num_row:
-			raise ValueError(f"Không thể nhân ma trận: {self.num_row}x{self.num_col} và {other.num_row}x{other.num_col}")
+		if self.shape[1] != other.shape[0]:
+			raise ValueError(f"Không thể nhân ma trận: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
 
 		# 2. Tạo ma trận rỗng (m hàng của A x p cột của B)
 		# Sử dụng list comprehension để tối ưu tốc độ trong Python thuần
 		result_data = [
 			[
-				sum(self.data[i][k] * other.data[k][j] for k in range(self.num_col))
-				for j in range(other.num_col)
+				sum(self.data[i][k] * other.data[k][j] for k in range(self.shape[1]))
+				for j in range(other.shape[1])
 			]
-			for i in range(self.num_row)
+			for i in range(self.shape[0])
 		]
 
 		# 3. Trả về đối tượng Matrix mới
@@ -113,8 +142,8 @@ class Matrix:
 
 	def is_identity(self):
 		mat = self.data
-		for i in range(self.num_row):
-			for j in range(self.num_col):
+		for i in range(self.shape[0]):
+			for j in range(self.shape[1]):
 				if (i != j and mat[i][j]) or (i == j and mat[i][j] != 1):
 					return False
 		return True
@@ -126,10 +155,10 @@ class Matrix:
 		return augmented matrix [self | other]
 		if other == None then let other = Identity matrix
 		"""
-		if other != None and self.num_row != other.num_row:
+		if other != None and self.shape[0] != other.shape[0]:
 			raise ValueError("Matrices must have the same number of rows")
 
-		n = self.num_row
+		n = self.shape[0]
 		if other == None:
 			other = Matrix.identity(n)
 
@@ -165,24 +194,13 @@ class Matrix:
 
 	""" START : CALCULATE ON MATRIX """
 
-class Vector:
-	def __init__(self, components, is_column=True):
-		self.data = list(components)
-		self.num_row = self.num_col = 1
-		if is_column == True:
-			self.num_row = len(self.data)
-		else:
-			self.num_col = len(self.data)
 
-	def transpose(self):
-		return Vector(self.data, is_column=not self.is_column)
 
-	def __repr__(self):
-		direction = "^T" if self.num_col < self.num_row else ""
-		s = ", ".join(f"{x:.2f}" for x in self.data)
-		return f"({s}){direction}"
-	
-	def __str__(self):
-		direction = "^T" if self.num_col < self.num_row else ""
-		s = ", ".join(f"{x:.2f}" for x in self.data)
-		return f"({s}){direction}"
+# Testing
+if __name__ == "__main__":
+	mat = Matrix([
+		[1,2,3],
+		[6,5,4]
+	])
+print(f"mat.rows = {mat.rows}", sep="\n")
+# print(f"mat.cols = {mat.cols}", sep="\n")

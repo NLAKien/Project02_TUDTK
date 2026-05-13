@@ -172,7 +172,7 @@ class Matrix:
 
 	def take_cols(self, *args):
 		# case 1: list of targeted cols
-		if len(args) == 1 and isistance(args[0], list):
+		if len(args) == 1 and isinstance(args[0], list):
 			selected_cols = args[0]
 		# case 2: <<first_col_id>>, <<last_col_id>> -> identify range [<<first_col_id>>, <<last_col_id>>]
 		elif len(args) == 2:
@@ -180,7 +180,8 @@ class Matrix:
 			selected_cols = list(range(start_col, end_col + 1))
 		
 		selected_cols.sort()
-		return Matrix([[row[j] for j in selected_cols] for row in self.data])	# NEED CHANGE
+		col_list = [self.cols[col_id] for col_id in selected_cols]
+		return Matrix.from_cvecs(col_list)	# NEED CHANGE
 
 	# --- OPERATOR OVERLOADING ---
 	def __mul__(self, other):
@@ -228,9 +229,16 @@ if __name__ == "__main__":
 
 	mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
 	print(f"mat_cols =\n{mat_cols}", sep="\n")
+
 	aug = mat_cols.augment()
 	print(f"[mat_cols | I] =\n{aug}", sep="\n")
+
 	aug = mat_cols.augment(mat.transpose())
 	print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
-	aug = mat_cols.augment(mat)
-	print(f"[mat_cols | mat] =\n{aug}", sep="\n")
+
+	aug1 = mat_cols.augment(mat)
+	print(f"[mat_cols | mat] =\n{aug1}", sep="\n")
+
+	aug_cols_2_4 = aug.take_cols([1,3])
+	print(f"matrix from column 2 and 4 of [mat_cols | mat^T] =\n{aug_cols_2_4}", sep="\n")
+

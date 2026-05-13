@@ -62,7 +62,13 @@ class Vector:
 
 class Matrix:
 	""" START CONSTRUCTORS """
-	def __init__(self, data: list[list[float]]):
+	def __init__(self, data: list[list[float]], by_cols=False):
+		if not data:
+			raise ValueError("Cần tồn tại giá trị để khởi tạo ma trận")
+		if by_cols == True:
+			tmp = [[data[j][i] for j in range(len(data))] for i in range(len(data[0]))]
+			data = tmp
+
 		num_row = len(data)
 		num_col = len(data[0])
 		self.shape = (num_row, num_col)
@@ -82,7 +88,10 @@ class Matrix:
 	    return cls.diag([1] * n)
 	
 	@classmethod
-	def by_cols(cls, cols: list[Vector]):
+	def from_cvecs(cls, cols: list[Vector]):
+		"""
+		Create matrix from column vectors
+		"""
 		vec_len = 0
 		for col in cols:
 			if not vec_len:
@@ -158,8 +167,8 @@ class Matrix:
 		if other == None:
 			other = Matrix.identity(n)
 
-		new_data = [self.data[i] + other.data[i] for i in range(n)]		# NEED CHANGE
-		return Matrix(new_data)
+		col_vecs = self.cols + other.cols
+		return Matrix.from_cvecs(col_vecs)
 
 	def take_cols(self, *args):
 		# case 1: list of targeted cols
@@ -214,5 +223,14 @@ if __name__ == "__main__":
 	print(f"iden is_identity = {iden.is_identity()}", sep="\n")
 	print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
 
-	mat_cols = Matrix.by_cols([Vector((1,2,3)), Vector((6,7,4))])
+	mat_cols = Matrix.from_cvecs([Vector((1,2,3)), Vector((6,7,4))])
 	print(f"mat_cols =\n{mat_cols}", sep="\n")
+
+	mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
+	print(f"mat_cols =\n{mat_cols}", sep="\n")
+	aug = mat_cols.augment()
+	print(f"[mat_cols | I] =\n{aug}", sep="\n")
+	aug = mat_cols.augment(mat.transpose())
+	print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
+	aug = mat_cols.augment(mat)
+	print(f"[mat_cols | mat] =\n{aug}", sep="\n")

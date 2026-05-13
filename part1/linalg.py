@@ -42,14 +42,14 @@ class Vector:
 				raise ValueError(f"Không thể cộng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
 		num = max(self.shape[0], self.shape[1])
 		data = [self[i] + other[i] for i in range(num)]
-		return Vector(data)
+		return Vector(data, is_col=(self.shape[1] == 1))
 
 	def __sub__(self, other):
 		if self.shape != other.shape:
 				raise ValueError(f"Không thể trừ 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
 		num = max(self.shape[0], self.shape[1])
 		data = [self[i] - other[i] for i in range(num)]
-		return Vector(data)
+		return Vector(data, is_col=(self.shape[1] == 1))
 
 	def __mul__(self, other):
 		if isinstance(other, Vector):
@@ -61,8 +61,7 @@ class Vector:
 				ret += self[i] * other[i]
 			return ret
 		elif isinstance(other, int | float):
-			v_ret = Vector([entry * other for entry in self.data], is_col=(self.shape[1]==1))
-#			v_ret.shape = self.shape
+			v_ret = Vector([entry * other for entry in self.data], is_col=(self.shape[1] == 1))
 			return v_ret
 		else:
 			raise TypeError("unsupported operand type for *")
@@ -125,11 +124,11 @@ class Matrix:
 		return "[" + ",\n ".join(f"{row}" for row in self.rows) + "]"
 
 	def __getitem__(self, key):
-	    # key dang (slice(None), col_idx) tuong ung Matrix[:, j]
-	    if isinstance(key, tuple) and isinstance(key[0], slice):
-	        col_idx = key[1]
+		# key dang (slice(None), col_idx) tuong ung Matrix[:, j]
+		if isinstance(key, tuple) and isinstance(key[0], slice):
+			col_idx = key[1]
 			return [self.rows[i].data[col_idx] for i in range(self.shape[0])]
-	    else:
+		else:
 			return self.rows[key]
 
 	def __setitem__(self, key, value):
@@ -196,7 +195,8 @@ class Matrix:
 			other = Matrix.identity(n)
 
 		self_cols = [Vector(row[j] for row in self.data) for j in range(self.shape[1])]
-		col_vecs = self.cols + other.cols
+		other_cols = [Vector(row[j] for row in other.data) for j in range(other.shape[1])]
+		col_vecs = self_cols + other_cols
 		return Matrix.from_vecs(col_vecs, is_col=True)
 
 	def take_cols(self, *args):
@@ -209,12 +209,14 @@ class Matrix:
 			selected_cols = list(range(start_col, end_col + 1))
 		
 		selected_cols.sort()
-		col_list = [self.cols[col_id] for col_id in selected_cols]
+		self_cols = [Vector(row[j] for row in self.data) for j in range(self.shape[1])]
+		col_list = [self_cols[col_id] for col_id in selected_cols]
 		return Matrix.from_vecs(col_list, is_col=True)	# NEED CHANGE
 
-	def gauss_jordan_eliminate(self) -> Matrix:
+	def gauss_jordan_eliminate(self) -> Tuple[Matrix, int]:
 		"""
 		Khu Gauss-Jordan co chon phan tu chot (Partial Pivoting)
+		Return 2-tuple: (ma tran rref, so lan hoan doi dong)
 		"""
 		# clone: mat <- self
 		mat = Matrix.from_vecs(self.rows, is_col=False)
@@ -253,11 +255,11 @@ class Matrix:
 				if r == cur_row:	# don't have to eliminate row of pivot
 					continue
 				factor = mat[r][k]/mat[cur_row][k]
-#				tmp_row = -factor*mat[cur_row]
-#				mat[r] = mat[r] + tmp_row
-				mat[r] = mat[r] + mat[cur_row]
+				mat[r] = mat[r] + (-factor*mat[cur_row])
 			cur_row += 1
-		return mat
+		return (mat, count)
+	
+
 
 	# --- OPERATOR OVERLOADING ---
 	def __mul__(self, other):
@@ -301,7 +303,7 @@ if __name__ == "__main__":
 	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
 	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
 	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
-	print(f"rref of mat^t = {mat.transpose().gauss_jordan_eliminate()}")
+	print(f"rref of mat^t =\n{mat.transpose().gauss_jordan_eliminate()[0]}")
 
 	iden = Matrix.identity(4)
 	print(f"iden =\n{iden}", sep="\n")

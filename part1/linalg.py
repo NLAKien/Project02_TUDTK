@@ -6,18 +6,16 @@ from operator import index
 
 class Vector:
 	"""
-	Vector objects by default represent column vectors, if row vector is wanted, let `is_row=True`
+	Vector objects by default represent column vectors, if row vector is wanted, let `is_col=False`
 	Display of a column vector: (x_1, x_2, ..., x_n)
 	Display of a row vector: (x_1 x_2 ... x_n)
 	"""
-	def __init__(self, components, is_row=False):
-		self.data = list(components)
-		self.shape = (len(self.data), 1) if is_row == False else (1, len(self.data))
+	def __init__(self, components, is_col=True, copy=True):
+		self.data = list(components) if copy else components
+		self.shape = (len(self.data), 1) if is_col == True else (1, len(self.data))
 	
 	def transpose(self) -> Vector:
-		ret = Vector(self.data)
-		ret.shape = (self.shape[1], self.shape[0])
-		return ret
+		return Vector(self.data, is_col=(self.shape[1] != 1))
 
 	def __repr__(self):
 		sep = ",    " if self.shape[1] == 1 else "    "
@@ -32,10 +30,13 @@ class Vector:
 	def __iter__(self):
 		return iter(self.data)
 
-	# -- OPERATOR OVERLOADING --
 	def __getitem__(self, idx):
 		return self.data[idx]
+	
+	def __setitem__(self, idx, value):
+		self.data[idx] = value
 
+	# -- OPERATOR OVERLOADING --
 	def __add__(self, other):
 		if self.shape != other.shape:
 				raise ValueError(f"Không thể cộng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
@@ -51,13 +52,22 @@ class Vector:
 		return Vector(data)
 
 	def __mul__(self, other):
-		if self.shape != other.shape:
-				raise ValueError(f"Không thể nhân vô hướng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
-		num = max(self.shape[0], self.shape[1])
-		ret = 0
-		for i in range(num):
-			ret += self[i] * other[i]
-		return ret
+		if isinstance(other, Vector):
+			if self.shape != other.shape:
+					raise ValueError(f"Không thể nhân vô hướng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+			num = max(self.shape[0], self.shape[1])
+			ret = 0
+			for i in range(num):
+				ret += self[i] * other[i]
+			return ret
+		elif isinstance(other, int | float):
+			v_ret = Vector([entry * other for entry in self.data], is_col=(self.shape[1]==1))
+#			v_ret.shape = self.shape
+			return v_ret
+		else:
+			raise TypeError("unsupported operand type for *")
+	def __rmul__(self, other):
+		return self.__mul__(other)
 
 
 class Matrix:
@@ -71,9 +81,9 @@ class Matrix:
 
 		num_row = len(data)
 		num_col = len(data[0])
+		self.data = [[entry for entry in row] for row in data]
 		self.shape = (num_row, num_col)
-		self.rows = [Vector(row[:], is_row=True) for row in data]
-		self.cols = [Vector(row[j] for row in data) for j in range(num_col)]
+		self.rows = [Vector(row, is_col=False, copy=False) for row in self.data]
 
 	@classmethod
 	def diag(cls, data: list[float]):
@@ -114,8 +124,23 @@ class Matrix:
 	def __str__(self):
 		return "[" + ",\n ".join(f"{row}" for row in self.rows) + "]"
 
-	def __getitem__(self, idx):
-		return self.rows[idx]
+	def __getitem__(self, key):
+	    # key dang (slice(None), col_idx) tuong ung Matrix[:, j]
+	    if isinstance(key, tuple) and isinstance(key[0], slice):
+	        col_idx = key[1]
+			return [self.rows[i].data[col_idx] for i in range(self.shape[0])]
+	    else:
+			return self.rows[key]
+
+	def __setitem__(self, key, value):
+	    # key dang (slice(None), col_idx) tuong ung Matrix[:, j]
+	    if isinstance(key, tuple) and isinstance(key[0], slice):
+	        col_idx = key[1]
+	        for i in range(self.shape[0]):
+	            self.rows[i].data[col_idx] = value[i]
+	    else:
+	        # gan dong
+	        self.rows[key] = value
 	
 	def __iter__(self):
 		return iter(self.rows)
@@ -170,6 +195,7 @@ class Matrix:
 		if other == None:
 			other = Matrix.identity(n)
 
+		self_cols = [Vector(row[j] for row in self.data) for j in range(self.shape[1])]
 		col_vecs = self.cols + other.cols
 		return Matrix.from_vecs(col_vecs, is_col=True)
 
@@ -185,6 +211,53 @@ class Matrix:
 		selected_cols.sort()
 		col_list = [self.cols[col_id] for col_id in selected_cols]
 		return Matrix.from_vecs(col_list, is_col=True)	# NEED CHANGE
+
+	def gauss_jordan_eliminate(self) -> Matrix:
+		"""
+		Khu Gauss-Jordan co chon phan tu chot (Partial Pivoting)
+		"""
+		# clone: mat <- self
+		mat = Matrix.from_vecs(self.rows, is_col=False)
+		# bien count duoc dung de dem so lan hoan doi dong
+		count = 0
+
+		cur_row = 0
+		# buoc khu $k \in [0, so cot)$
+		for k in range(mat.shape[1]):
+			if cur_row >= mat.shape[0]:	# ket thuc thuat toan khi da duyet het tat ca cac dong cua ma tran
+				break
+
+			# Find desired `p` (max row)
+			p = cur_row
+			# iterrate `i`: `cur_row <= i < num_row` to find max row
+			for i in range(cur_row, mat.shape[0]):
+				if abs(mat[p][k]) < abs(mat[i][k]):
+					p = i	# update max row
+
+			# swap `r_k` <-> `r_p`
+			if cur_row != p:
+				mat[cur_row], mat[p] = mat[p], mat[cur_row]
+				count += 1
+
+			# `mat[cur_row][k] == 0` ->> skip column `k`
+			if is_zero(mat[cur_row][k]):
+				continue
+			
+			# if `pivot != 1` (`mat[cur_row][k]` is `pivot`) then divide the current row by `pivot`, the `pivot`'s value after will be 1
+			pivot = mat[cur_row][k]
+			if not is_zero(pivot - 1):	
+				mat[cur_row] = (1/pivot)*mat[cur_row]
+
+			# eliminate values in `pivot`'s column for all rows except the row of current pivot
+			for r in range(mat.shape[0]):
+				if r == cur_row:	# don't have to eliminate row of pivot
+					continue
+				factor = mat[r][k]/mat[cur_row][k]
+#				tmp_row = -factor*mat[cur_row]
+#				mat[r] = mat[r] + tmp_row
+				mat[r] = mat[r] + mat[cur_row]
+			cur_row += 1
+		return mat
 
 	# --- OPERATOR OVERLOADING ---
 	def __mul__(self, other):
@@ -215,50 +288,55 @@ class Matrix:
 		return Matrix.from_vecs(rvecs, is_col=False)
 
 
-# Testing
+# <<-----TESTING----->> #
 if __name__ == "__main__":
 	mat = Matrix([
 		[1,2,3],
 		[6,5,4]
 	])
 
-	try:
-		print(f"mat.rows = {mat.rows}", sep="\n")
-		print(f"mat.cols = {mat.cols}", sep="\n")
-		print(f"mat =\n{mat}", sep="\n")
-		print(f"mat^T =\n{mat.transpose()}", sep="\n")
-		print(f"mat is_ref = {mat.is_ref()}", sep="\n")
-		print(f"mat is_identity = {mat.is_identity()}", sep="\n")
-		print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
-	
-		iden = Matrix.identity(4)
-		print(f"iden =\n{iden}", sep="\n")
-		print(f"iden is_ref = {iden.is_ref()}", sep="\n")
-		print(f"iden is_identity = {iden.is_identity()}", sep="\n")
-		print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
-	
-		mat_cols = Matrix.from_vecs([Vector((1,2,3)), Vector((6,7,4))])
-		print(f"mat_cols =\n{mat_cols}", sep="\n")
-	
-		mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
-		print(f"mat_cols =\n{mat_cols}", sep="\n")
-	
-		aug = mat_cols.augment()
-		print(f"[mat_cols | I] =\n{aug}", sep="\n")
-	
-		aug = mat_cols.augment(mat.transpose())
-		print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
-	
-		aug_cols_2_4 = aug.take_cols([1,3])
-		print(f"A = matrix from column 2 and 4 of [mat_cols | mat^T] =\n{aug_cols_2_4}", sep="\n")
+	print(f"mat.rows = {mat.rows}", sep="\n")
+	print(f"mat =\n{mat}", sep="\n")
+	print(f"mat^T =\n{mat.transpose()}", sep="\n")
+	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
+	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
+	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
+	print(f"rref of mat^t = {mat.transpose().gauss_jordan_eliminate()}")
 
-		sub_A_matT = aug_cols_2_4 - mat.transpose()
-		print(f"A - mat^T =\n{sub_A_matT}")
+	iden = Matrix.identity(4)
+	print(f"iden =\n{iden}", sep="\n")
+	print(f"iden is_ref = {iden.is_ref()}", sep="\n")
+	print(f"iden is_identity = {iden.is_identity()}", sep="\n")
+	print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
 
-		add_mat_mat = mat + mat
-		print(f"mat + mat =\n{add_mat_mat}")
+	mat_cols = Matrix.from_vecs([Vector((1,2,3)), Vector((6,7,4))])
+	print(f"mat_cols =\n{mat_cols}", sep="\n")
 
-		aug1 = mat_cols.augment(mat)
-		print(f"[mat_cols | mat] =\n{aug1}", sep="\n")
-	except Exception as e:
-		print(f"exception occurred: {e}")
+	mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
+	print(f"mat_cols =\n{mat_cols}", sep="\n")
+
+	aug = mat_cols.augment()
+	print(f"[mat_cols | I] =\n{aug}", sep="\n")
+
+	aug = mat_cols.augment(mat.transpose())
+	print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
+
+	aug_cols_2_4 = aug.take_cols([1,3])
+	print(f"A = matrix from column 2 and 4 of [mat_cols | mat^T] =\n{aug_cols_2_4}", sep="\n")
+
+	sub_A_matT = aug_cols_2_4 - mat.transpose()
+	print(f"A - mat^T =\n{sub_A_matT}")
+
+	add_mat_mat = mat + mat
+	print(f"mat + mat =\n{add_mat_mat}")
+
+	v1 = Vector((1,2,3))
+	v2 = Vector((3,2,1))
+	print(f"v1 = {v1}")
+	print(f"v2 = {v2}")
+	print(f"v1 + v2 = {v1+v2}")
+	print(f"v1 - v2 = {v1-v2}")
+	print(f"v1 . v2 = {v1*v2}")
+	print(f"2 * v1 = {2*v1}")
+
+	

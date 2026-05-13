@@ -1,4 +1,4 @@
-from linalg import Matrix, Vector
+from linalg import Matrix, Vector, is_zero
 
 def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
 	"""
@@ -9,3 +9,5 @@ def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
 		 	 'square of sigma hat' là ước lượng không chệch của phương sai nhiễu
 	"""
 	pass
+
+

@@ -8,6 +8,5 @@ def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
 		với: 'Beta hat' là vector tham số ước lượng,
 		 	 'square of sigma hat' là ước lượng không chệch của phương sai nhiễu
 	"""
-	pass
-
-
+	X_transpose = X.transpose()
+	

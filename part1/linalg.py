@@ -64,7 +64,7 @@ class Vector:
 			v_ret = Vector([entry * other for entry in self.data], is_col=(self.shape[1] == 1))
 			return v_ret
 		else:
-			raise TypeError("unsupported operand type for *")
+			raise TypeError("Kiểu của hạng tử không được hỗ trợ cho toán tử *")
 	def __rmul__(self, other):
 		return self.__mul__(other)
 
@@ -331,15 +331,24 @@ class Matrix:
 	def __mul__(self, other):
 		if self.shape[1] != other.shape[0]:
 			raise ValueError(f"Không thể nhân ma trận: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
-
-		result_data = [
-			[
-				sum(self[i][k] * other[k][j] for k in range(self.shape[1]))
-				for j in range(other.shape[1])
+		
+		if isinstance(other, Matrix):
+			result_data = [
+				[
+					sum(self[i][k] * other[k][j] for k in range(self.shape[1]))
+					for j in range(other.shape[1])
+				]
+				for i in range(self.shape[0])
 			]
-			for i in range(self.shape[0])
-		]
-		return Matrix(result_data)
+			return Matrix(result_data)
+		elif isinstance(other, Vector):
+			result_data = [
+				sum(self[i][k] * other[k] for k in range(self.shape[1]))
+				for i in range(self.shape[0])
+			]
+			return Vector(result_data)
+		else:
+			raise TypeError("Kiểu của hạng tử không được hỗ trợ cho toán tử *")
 
 	def __add__(self, other):
 		if self.shape != other.shape:
@@ -366,6 +375,7 @@ if __name__ == "__main__":
 	print(f"mat.rows = {mat.rows}", sep="\n")
 	print(f"mat =\n{mat}", sep="\n")
 	print(f"mat^T =\n{mat.transpose()}", sep="\n")
+	print(f"mat * mat^T =\n{mat * mat.transpose()}", sep="\n")
 	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
 	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
 	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
@@ -413,3 +423,5 @@ if __name__ == "__main__":
 	])
 	print(f"[inv | I]=\n{inv.augment()}")
 	print(f"inv^(-1) =\n{inv.inverse()}")
+	v_r2 = Vector((3,3))
+	print(f"inv * v_r2 =\n{inv*v_r2}")

@@ -88,22 +88,25 @@ class Matrix:
 	    return cls.diag([1] * n)
 	
 	@classmethod
-	def from_cvecs(cls, cols: list[Vector]):
+	def from_vecs(cls, vecs: list[Vector], is_col=True):
 		"""
-		Create matrix from column vectors
+		Create matrix from vectors
 		"""
 		vec_len = 0
-		for col in cols:
+		for vec in vecs:
 			if not vec_len:
-				vec_shape = col.shape
-			if col.shape != vec_shape:
+				vec_shape = vec.shape
+			if vec.shape != vec_shape:
 				raise ValueError("Các vector phải có cùng kích thước")
 
 		vec_len = max(vec_shape[0], vec_shape[1])
 		if vec_len == 0:
 			raise ValueError("Các vector phải tốn tại giá trị")
 		# create raw 2D list of floats
-		grid = [[col[i] for col in cols] for i in range(vec_len)]
+		if is_col:
+			grid = [[col[i] for col in vecs] for i in range(vec_len)]
+		else:
+			grid = [[entry for entry in row] for row in vecs]
 		return cls(grid)
 
 	""" END CONSTRUCTORS """
@@ -168,7 +171,7 @@ class Matrix:
 			other = Matrix.identity(n)
 
 		col_vecs = self.cols + other.cols
-		return Matrix.from_cvecs(col_vecs)
+		return Matrix.from_vecs(col_vecs, is_col=True)
 
 	def take_cols(self, *args):
 		# case 1: list of targeted cols
@@ -181,7 +184,7 @@ class Matrix:
 		
 		selected_cols.sort()
 		col_list = [self.cols[col_id] for col_id in selected_cols]
-		return Matrix.from_cvecs(col_list)	# NEED CHANGE
+		return Matrix.from_vecs(col_list, is_col=True)	# NEED CHANGE
 
 	# --- OPERATOR OVERLOADING ---
 	def __mul__(self, other):
@@ -198,10 +201,18 @@ class Matrix:
 		return Matrix(result_data)
 
 	def __add__(self, other):
-		pass
+		if self.shape != other.shape:
+			raise ValueError(f"Không thể cộng 2 ma trận khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+
+		rvecs = [self[i] + other[i] for i in range(self.shape[0])]	
+		return Matrix.from_vecs(rvecs, is_col=False)
 	
 	def __sub__(self, other):
-		pass
+		if self.shape != other.shape:
+			raise ValueError(f"Không thể cộng 2 ma trận khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+
+		rvecs = [self[i] - other[i] for i in range(self.shape[0])]	
+		return Matrix.from_vecs(rvecs, is_col=False)
 
 
 # Testing
@@ -210,35 +221,44 @@ if __name__ == "__main__":
 		[1,2,3],
 		[6,5,4]
 	])
-	print(f"mat.rows = {mat.rows}", sep="\n")
-	print(f"mat.cols = {mat.cols}", sep="\n")
-	print(f"mat =\n{mat}", sep="\n")
-	print(f"mat^T =\n{mat.transpose()}", sep="\n")
-	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
-	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
-	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
 
-	iden = Matrix.identity(4)
-	print(f"iden =\n{iden}", sep="\n")
-	print(f"iden is_ref = {iden.is_ref()}", sep="\n")
-	print(f"iden is_identity = {iden.is_identity()}", sep="\n")
-	print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
+	try:
+		print(f"mat.rows = {mat.rows}", sep="\n")
+		print(f"mat.cols = {mat.cols}", sep="\n")
+		print(f"mat =\n{mat}", sep="\n")
+		print(f"mat^T =\n{mat.transpose()}", sep="\n")
+		print(f"mat is_ref = {mat.is_ref()}", sep="\n")
+		print(f"mat is_identity = {mat.is_identity()}", sep="\n")
+		print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
+	
+		iden = Matrix.identity(4)
+		print(f"iden =\n{iden}", sep="\n")
+		print(f"iden is_ref = {iden.is_ref()}", sep="\n")
+		print(f"iden is_identity = {iden.is_identity()}", sep="\n")
+		print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
+	
+		mat_cols = Matrix.from_vecs([Vector((1,2,3)), Vector((6,7,4))])
+		print(f"mat_cols =\n{mat_cols}", sep="\n")
+	
+		mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
+		print(f"mat_cols =\n{mat_cols}", sep="\n")
+	
+		aug = mat_cols.augment()
+		print(f"[mat_cols | I] =\n{aug}", sep="\n")
+	
+		aug = mat_cols.augment(mat.transpose())
+		print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
+	
+		aug_cols_2_4 = aug.take_cols([1,3])
+		print(f"A = matrix from column 2 and 4 of [mat_cols | mat^T] =\n{aug_cols_2_4}", sep="\n")
 
-	mat_cols = Matrix.from_cvecs([Vector((1,2,3)), Vector((6,7,4))])
-	print(f"mat_cols =\n{mat_cols}", sep="\n")
+		sub_A_matT = aug_cols_2_4 - mat.transpose()
+		print(f"A - mat^T =\n{sub_A_matT}")
 
-	mat_cols = Matrix([[1,2,3], [6,7,4]], by_cols=True)
-	print(f"mat_cols =\n{mat_cols}", sep="\n")
+		add_mat_mat = mat + mat
+		print(f"mat + mat =\n{add_mat_mat}")
 
-	aug = mat_cols.augment()
-	print(f"[mat_cols | I] =\n{aug}", sep="\n")
-
-	aug = mat_cols.augment(mat.transpose())
-	print(f"[mat_cols | mat^T] =\n{aug}", sep="\n")
-
-	aug1 = mat_cols.augment(mat)
-	print(f"[mat_cols | mat] =\n{aug1}", sep="\n")
-
-	aug_cols_2_4 = aug.take_cols([1,3])
-	print(f"matrix from column 2 and 4 of [mat_cols | mat^T] =\n{aug_cols_2_4}", sep="\n")
-
+		aug1 = mat_cols.augment(mat)
+		print(f"[mat_cols | mat] =\n{aug1}", sep="\n")
+	except Exception as e:
+		print(f"exception occurred: {e}")

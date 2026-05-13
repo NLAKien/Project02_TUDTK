@@ -132,14 +132,15 @@ class Matrix:
 			return self.rows[key]
 
 	def __setitem__(self, key, value):
-	    # key dang (slice(None), col_idx) tuong ung Matrix[:, j]
-	    if isinstance(key, tuple) and isinstance(key[0], slice):
-	        col_idx = key[1]
-	        for i in range(self.shape[0]):
-	            self.rows[i].data[col_idx] = value[i]
-	    else:
-	        # gan dong
-	        self.rows[key] = value
+		# key dang (slice(None), col_idx) tuong ung Matrix[:, j]
+		if isinstance(key, tuple) and isinstance(key[0], slice):
+			col_idx = key[1]
+			for i in range(self.shape[0]):
+				self.rows[i].data[col_idx] = value[i]
+		else:
+			# gan dong
+			self.rows[key] = value
+			self.data[key] = value
 	
 	def __iter__(self):
 		return iter(self.rows)
@@ -213,10 +214,55 @@ class Matrix:
 		col_list = [self_cols[col_id] for col_id in selected_cols]
 		return Matrix.from_vecs(col_list, is_col=True)	# NEED CHANGE
 
-	def gauss_jordan_eliminate(self) -> Tuple[Matrix, int]:
+	def gauss_jordan_eliminate(self) -> Matrix:
 		"""
 		Khu Gauss-Jordan co chon phan tu chot (Partial Pivoting)
-		Return 2-tuple: (ma tran rref, so lan hoan doi dong)
+		Return: ma tran rref
+		"""
+		# clone: mat <- self
+		mat = Matrix.from_vecs(self.rows, is_col=False)
+		# bien count duoc dung de dem so lan hoan doi dong
+		count = 0
+
+		cur_row = 0
+		# buoc khu $k \in [0, so cot)$
+		for k in range(mat.shape[1]):
+			if cur_row >= mat.shape[0]:	# ket thuc thuat toan khi da duyet het tat ca cac dong cua ma tran
+				break
+
+			# Find desired `p` (max row)
+			p = cur_row
+			# iterrate `i`: `cur_row <= i < num_row` to find max row
+			for i in range(cur_row, mat.shape[0]):
+				if abs(mat[p][k]) < abs(mat[i][k]):
+					p = i	# update max row
+
+			# swap `r_k` <-> `r_p`
+			if cur_row != p:
+				mat[cur_row], mat[p] = mat[p], mat[cur_row]
+
+			# `mat[cur_row][k] == 0` ->> skip column `k`
+			if is_zero(mat[cur_row][k]):
+				continue
+			
+			# if `pivot != 1` (`mat[cur_row][k]` is `pivot`) then divide the current row by `pivot`, the `pivot`'s value after will be 1
+			pivot = mat[cur_row][k]
+			if not is_zero(pivot - 1):	
+				mat[cur_row] = (1/pivot)*mat[cur_row]
+
+			# eliminate values in `pivot`'s column for all rows except the row of current pivot
+			for r in range(mat.shape[0]):
+				if r == cur_row:	# don't have to eliminate row of pivot
+					continue
+				factor = mat[r][k]/mat[cur_row][k]
+				mat[r] = mat[r] + (-factor*mat[cur_row])
+			cur_row += 1
+		return mat
+	
+	def gauss_eliminate(self) -> Tuple[Matrix, int]:
+		"""
+		Khu Gauss co chon phan tu chot (Partial Pivoting)
+		Return 2-tuple: (ma tran ref, so lan hoan doi dong)
 		"""
 		# clone: mat <- self
 		mat = Matrix.from_vecs(self.rows, is_col=False)
@@ -245,21 +291,41 @@ class Matrix:
 			if is_zero(mat[cur_row][k]):
 				continue
 			
-			# if `pivot != 1` (`mat[cur_row][k]` is `pivot`) then divide the current row by `pivot`, the `pivot`'s value after will be 1
 			pivot = mat[cur_row][k]
-			if not is_zero(pivot - 1):	
-				mat[cur_row] = (1/pivot)*mat[cur_row]
 
-			# eliminate values in `pivot`'s column for all rows except the row of current pivot
-			for r in range(mat.shape[0]):
-				if r == cur_row:	# don't have to eliminate row of pivot
-					continue
+			# eliminate values in `pivot`'s column for all rows below current_row
+			for r in range(cur_row + 1, mat.shape[0]):
 				factor = mat[r][k]/mat[cur_row][k]
 				mat[r] = mat[r] + (-factor*mat[cur_row])
 			cur_row += 1
 		return (mat, count)
-	
 
+	def det(self):
+		# check 
+		if self.shape[0] != self.shape[1]:
+			return None
+		
+		mat, s = self.gauss_eliminate() 
+	
+		n = self.shape[0]
+		res = 1.0
+	
+		for i in range(n):
+			res *= mat[i][i]
+		res *= (-1)**s
+		return res
+
+	def inverse(self):
+		"""
+		Tra ve ma tran nghich dao cua `self`
+		Su dung phuong phap khu Gauss-Jordan
+		"""
+		if is_zero(self.det()):
+			return None
+		
+		aug_mat = self.augment()
+		rref = aug_mat.gauss_jordan_eliminate()
+		return rref.take_cols(self.shape[1], self.shape[1]*2 - 1)
 
 	# --- OPERATOR OVERLOADING ---
 	def __mul__(self, other):
@@ -303,7 +369,7 @@ if __name__ == "__main__":
 	print(f"mat is_ref = {mat.is_ref()}", sep="\n")
 	print(f"mat is_identity = {mat.is_identity()}", sep="\n")
 	print(f"mat is_diagonal = {mat.is_diagonal()}", sep="\n")
-	print(f"rref of mat^t =\n{mat.transpose().gauss_jordan_eliminate()[0]}")
+	print(f"rref of mat^t =\n{mat.transpose().gauss_jordan_eliminate()}")
 
 	iden = Matrix.identity(4)
 	print(f"iden =\n{iden}", sep="\n")
@@ -341,4 +407,9 @@ if __name__ == "__main__":
 	print(f"v1 . v2 = {v1*v2}")
 	print(f"2 * v1 = {2*v1}")
 
-	
+	inv = Matrix([
+		[-1/3, 2/3],
+		[1, 1]
+	])
+	print(f"[inv | I]=\n{inv.augment()}")
+	print(f"inv^(-1) =\n{inv.inverse()}")

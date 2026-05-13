@@ -80,6 +80,22 @@ class Matrix:
 	def identity(cls, n: int):
 	    # just call diag with ones
 	    return cls.diag([1] * n)
+	
+	@classmethod
+	def by_cols(cls, cols: list[Vector]):
+		vec_len = 0
+		for col in cols:
+			if not vec_len:
+				vec_shape = col.shape
+			if col.shape != vec_shape:
+				raise ValueError("Các vector phải có cùng kích thước")
+
+		vec_len = max(vec_shape[0], vec_shape[1])
+		if vec_len == 0:
+			raise ValueError("Các vector phải tốn tại giá trị")
+		# create raw 2D list of floats
+		grid = [[col[i] for col in cols] for i in range(vec_len)]
+		return cls(grid)
 
 	""" END CONSTRUCTORS """
 
@@ -136,13 +152,13 @@ class Matrix:
 		if other == None then let other = Identity matrix
 		"""
 		if other != None and self.shape[0] != other.shape[0]:
-			raise ValueError("Matrices must have the same number of rows")
+			raise ValueError("Hai ma trận phải có cùng số dòng để có thể ghép")
 
 		n = self.shape[0]
 		if other == None:
 			other = Matrix.identity(n)
 
-		new_data = [self.data[i] + other.data[i] for i in range(n)]
+		new_data = [self.data[i] + other.data[i] for i in range(n)]		# NEED CHANGE
 		return Matrix(new_data)
 
 	def take_cols(self, *args):
@@ -197,3 +213,6 @@ if __name__ == "__main__":
 	print(f"iden is_ref = {iden.is_ref()}", sep="\n")
 	print(f"iden is_identity = {iden.is_identity()}", sep="\n")
 	print(f"iden is_diagonal = {iden.is_diagonal()}", sep="\n")
+
+	mat_cols = Matrix.by_cols([Vector((1,2,3)), Vector((6,7,4))])
+	print(f"mat_cols =\n{mat_cols}", sep="\n")

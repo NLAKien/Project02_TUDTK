@@ -1,3 +1,5 @@
+from math import sqrt
+
 def is_zero(x: float) -> bool:
 	return abs(x) < 1e-10
 
@@ -16,6 +18,12 @@ class Vector:
 	
 	def transpose(self) -> Vector:
 		return Vector(self.data, is_col=(self.shape[1] != 1))
+	
+	def squared_norm(self) -> float:
+		return sum(entry for entry in self.data)
+	
+	def norm(self) -> float:
+		return sqrt(squared_norm)
 
 	def __repr__(self):
 		sep = ",    " if self.shape[1] == 1 else "    "

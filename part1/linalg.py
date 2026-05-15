@@ -20,7 +20,7 @@ class Vector:
 		return Vector(self.data, is_col=(self.shape[1] != 1))
 	
 	def squared_norm(self) -> float:
-		return sum(entry for entry in self.data)
+		return sum(entry*entry for entry in self.data)
 	
 	def norm(self) -> float:
 		return sqrt(squared_norm)

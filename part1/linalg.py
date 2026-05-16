@@ -24,6 +24,15 @@ class Vector:
 	
 	def norm(self) -> float:
 		return sqrt(squared_norm)
+	
+	def scalar_mul(self, other) -> float:
+		if not isinstance(other, Vector):
+			raise TypeError("Vector chỉ có thể nhân vô hướng với Vector")
+		num = max(self.shape[0], self.shape[1])
+		ret = 0
+		for i in range(num):
+			ret += self[i] * other[i]
+		return ret
 
 	def __repr__(self):
 		sep = ",    " if self.shape[1] == 1 else "    "
@@ -61,8 +70,8 @@ class Vector:
 
 	def __mul__(self, other):
 		if isinstance(other, Vector):
-			if self.shape != other.shape:
-					raise ValueError(f"Không thể nhân vô hướng 2 vector khác kích thước: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
+			if self.shape[1] != other.shape[0]:
+					raise ValueError(f"Không thể nhân 2 vector kích thước không phù hợp: {self.shape[0]}x{self.shape[1]} và {other.shape[0]}x{other.shape[1]}")
 			num = max(self.shape[0], self.shape[1])
 			ret = 0
 			for i in range(num):

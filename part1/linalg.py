@@ -155,7 +155,6 @@ class Matrix:
         def __iter__(self):
                 return iter(self.rows)
 
-
         """ START ATTRIBUTE CHECKING """
         def is_ref(self):
                 # return True if `self` is REF

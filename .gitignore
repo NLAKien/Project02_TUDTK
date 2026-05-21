@@ -3,3 +3,7 @@ __pycache__/
 
 # vim
 **/*.swp
+
+
+.vscodeignore
+CalCOFI_dataset/bottle.csv

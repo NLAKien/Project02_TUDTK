@@ -1,13 +1,18 @@
 # stat_inference.py
-from linalg import Matrix, Vector
-from ols_implementation import ols_fit
+try:
+    from .linalg import Matrix, Vector
+    from .ols_implementation import ols_fit
+except ImportError:
+    from linalg import Matrix, Vector
+    from ols_implementation import ols_fit
+
 from scipy.stats import t as t_dist, f as f_dist
 import math
 
 
 def standard_errors(X: Matrix, squared_sigma_hat: float) -> Vector:
     XtX_inv = (X.transpose() * X).inverse()
-    num_params = X.shape[1]          # p+1 (kể intercept)
+    num_params = X.shape[1]          
     se_list = [math.sqrt(squared_sigma_hat * XtX_inv[j][j]) for j in range(num_params)]
     return Vector(se_list)
 
@@ -68,8 +73,8 @@ def summary(X: Matrix, y: Vector, feature_names: list[str] = None):
     feature_names: tên p+1 tham số, vd. ['intercept', 'x1', 'x2']
     """
     n   = X.shape[0]
-    p   = X.shape[1] - 1        # số regressor, KHÔNG kể intercept
-    df  = n - p - 1             # = df trong ols_fit
+    p   = X.shape[1] - 1       
+    df  = n - p - 1            
 
     beta_hat, sigma2_hat = ols_fit(X, y)
     se            = standard_errors(X, sigma2_hat)
@@ -108,7 +113,6 @@ def summary(X: Matrix, y: Vector, feature_names: list[str] = None):
     print("  * p < 0.05")
 
 
-# ── QUICK TEST ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     X = Matrix([
         [1, 1],

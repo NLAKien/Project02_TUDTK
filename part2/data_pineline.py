@@ -1,3 +1,5 @@
+from preprocess import OneHotEncoder
+
 class DataPipeline:
     """
     Pipeline tiền xử lý dữ liệu theo thứ tự:

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from linalg import Matrix, Vector
 
 def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
@@ -19,7 +20,37 @@ def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
 
 	return (beta_hat_ols, squared_sigma_hat)
 
+def predict(X: Matrix, beta_hat: Vector) -> Vector:
+    """
+    Dự đoán giá trị kết quả dựa trên ma trận X và vector tham số ước lượng beta_hat
+    """
+    return X * beta_hat
 
+def residuals(X: Matrix, y: Vector, beta_hat: Vector) -> Vector:
+    """
+    Tính phần dư (residuals):
+	residuals = y - X * beta_hat
+    """
+    return y - X * beta_hat
+
+def hat_matrix(X: Matrix) -> Matrix:
+    """
+    Tính Hat Matrix:
+        H = X(X^TX)^(-1)X^T
+    """
+
+    Xt = X.transpose()
+
+    XtX = Xt * X
+
+    XtX_inv = XtX.inverse()
+
+    if XtX_inv is None:
+        raise ValueError("X^TX không khả nghịch")
+
+    H = X * XtX_inv * Xt
+
+    return H
 
 if __name__ == "__main__":
 	X = Matrix([

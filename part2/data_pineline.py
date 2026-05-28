@@ -1,4 +1,6 @@
-from preprocess import OneHotEncoder
+import preprocess as pp
+import pandas as pd
+import numpy as np
 
 class DataPipeline:
     """
@@ -10,23 +12,87 @@ class DataPipeline:
     def __init__(self, numeric_features, categorical_features):
         self.numeric_features = numeric_features
         self.categorical_features = categorical_features
-        self.train_encoded_columns_ = None
         self.is_fitted = False
+        self.encoder = pp.OneHotEncoder()
 
     def fit(self, X: pd.DataFrame):
         """
         Fit pipeline 
         """
-        pass
+        # split X into numeric and categorical
+        X_numeric = X[self.numeric_features]
+        X_categorical = X[self.categorical_features]
+        
+        # 1. Imputer
+        X_numeric_imputed = pp.knn_imputer(X_numeric)
+        X_categorical_imputed = X_categorical.fillna("unknown")
+        
+        # 2. Encoder
+        X_encoded = self.encoder.fit_transform(X_categorical_imputed)
+        self.train_encoded_columns_ = X_encoded.columns.values
+
+        # 3. Scaler
+        X_scaled, self.means_, self.stds_ = pp.standard_scaler(pd.DataFrame(X_numeric_imputed, columns=self.numeric_features))
+        
+        self.is_fitted = True
+        # ghép encoded dataframe với scaled dataframe
+        X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+        return X_processed
 
     def transform(self, X: pd.DataFrame):
         """
         Transform data theo pipeline
         """
-        pass
+        if not self.is_fitted:
+            raise ValueError("Pipeline has not been fitted yet.")
+        
+        # 1. Imputer
+        X_numeric_imputed = pp.knn_imputer(X[self.numeric_features])
+        X_categorical_imputed = X[self.categorical_features].fillna("unknown")
 
-    def fit_transform(self, X: pd.DataFrame):
-        """
-        Fit and transform data
-        """
-        return self.fit(X).transform(X)
+        # 2. Encoder
+        X_encoded = self.encoder.transform(X_categorical_imputed)
+        X_encoded = X_encoded[self.train_encoded_columns_]
+
+        # 3. Scaler
+        X_scaled, _, _ = pp.standard_scaler(pd.DataFrame(X_numeric_imputed, columns=self.numeric_features))
+
+        # ghép encoded dataframe với scaled dataframe
+        X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+        return X_processed
+
+if __name__ == "__main__":
+    # Tạo dữ liệu mẫu
+    df_train = pd.DataFrame({
+        'A': [1, 2, np.nan, 4],
+        'B': ['X', 'Y', 'Z', 'X'],
+        'C': [5, np.nan, 7, 8]
+    })
+
+    df_test = pd.DataFrame({
+        'A': [10, np.nan, 30],
+        'B': ['Y', 'Z', 'X'],
+        'C': [15, 20, np.nan]
+    })
+
+    # Định nghĩa các cột số và cột danh mục
+    numeric_cols = ['A', 'C']
+    categorical_cols = ['B']
+
+    # Khởi tạo và fit pipeline
+    pipeline = DataPipeline(numeric_features=numeric_cols, categorical_features=categorical_cols)
+    
+    print("Train Data:")
+    print(df_train)
+    print("\nTest Data:")
+    print(df_test)
+
+    # Fit và transform train data
+    df_train_processed = pipeline.fit(df_train)
+    print("\nTrain Data Processed:")
+    print(df_train_processed)
+
+    # Transform test data
+    df_test_processed = pipeline.transform(df_test)
+    print("\nTest Data Processed:")
+    print(df_test_processed)

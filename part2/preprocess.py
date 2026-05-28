@@ -120,10 +120,13 @@ def knn_imputer(X, k=5):
 
         common_features_count = np.sum(common_features, axis=1)
 
-        distances = np.where(
-            common_features_count > 0,
-            np.sqrt(sq_dist_sum * (n_features / common_features_count)),
-            np.inf
+        distances = np.full(n_samples, np.inf)
+
+        valid_mask = common_features_count > 0
+
+        distances[valid_mask] = np.sqrt(
+            sq_dist_sum[valid_mask] *
+            (n_features / common_features_count[valid_mask])
         )
         distances[i] = np.inf
 

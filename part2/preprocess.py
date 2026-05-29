@@ -56,12 +56,16 @@ def standard_scaler(df_input):
         valid_data = col_data[~np.isnan(col_data)]
 
         col_mean = np.sum(valid_data) / len(valid_data)
-        col_std = np.sqrt(np.sum((valid_data - col_mean) ** 2) / len(valid_data))
+        col_std = np.sqrt(np.sum((valid_data - col_mean) ** 2) / (len(valid_data) - 1))
+
+        if col_std == 0:
+            df_scaled[col] = 0.0
+            continue
 
         means[col], stds[col] = col_mean, col_std
         for i in range(len(col_data)):
             if not np.isnan(col_data[i]):
-                df_scaled.at[i, col] = (col_data[i] - col_mean) / col_std
+                df_scaled.iloc[i, df_scaled.columns.get_loc(col)] = (col_data[i] - col_mean) / col_std
     return df_scaled, means, stds
 
 
@@ -73,7 +77,7 @@ def inverse_scaler(df_scaled, means, stds):
         col_data = df_scaled[col].values
         for i in range(len(col_data)):
             if not np.isnan(col_data[i]):
-                df_inverse.at[i, col] = (col_data[i] * stds[col]) + means[col]
+                df_inverse.iloc[i, df_inverse.columns.get_loc(col)] = (col_data[i] * stds[col]) + means[col]
     return df_inverse
 
 

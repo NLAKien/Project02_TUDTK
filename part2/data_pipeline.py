@@ -55,7 +55,9 @@ class DataPipeline:
         X_encoded = X_encoded[self.train_encoded_columns_]
 
         # 3. Scaler
-        X_scaled, _, _ = pp.standard_scaler(pd.DataFrame(X_numeric_imputed, columns=self.numeric_features))
+        # Correct approach — apply train's mean/std manually
+        X_numeric_df = pd.DataFrame(X_numeric_imputed, columns=self.numeric_features)
+        X_scaled = (X_numeric_df - pd.Series(self.means_)) / pd.Series(self.stds_)
 
         # ghép encoded dataframe với scaled dataframe
         X_processed = pd.concat([X_scaled, X_encoded], axis=1)

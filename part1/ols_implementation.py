@@ -14,7 +14,7 @@ def ols_fit(X: Matrix, y: Vector) -> Tuple[Vector, float]:
 	beta_hat_ols = X_transpose__X__inv*X_transpose*y
 
 	n = X.shape[0]
-	p = X.shape[1]
+	p = X.shape[1] - 1
 	rss = (y - X*beta_hat_ols).squared_norm()
 	squared_sigma_hat = rss/(n - p - 1)
 

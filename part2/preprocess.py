@@ -8,7 +8,7 @@ class OneHotEncoder:
         self.feature_names_ = []
 
     def fit(self, X):
-        X_df = pd.DataFrame(X) # Ép về DataFrame cho dễ thao tác
+        X_df = pd.DataFrame(X)
         
         for col in X_df.columns:
             unique_cats = sorted(X_df[col].dropna().unique())

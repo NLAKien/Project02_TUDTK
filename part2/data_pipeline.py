@@ -9,11 +9,12 @@ class DataPipeline:
     2. Encoding
     3. Chuẩn hóa 
     """
-    def __init__(self, numeric_features, categorical_features):
+    def __init__(self, numeric_features, categorical_features, n_neighbors=5):
         self.numeric_features = numeric_features
         self.categorical_features = categorical_features
         self.is_fitted = False
         self.encoder = pp.OneHotEncoder()
+        self.n_neighbors = n_neighbors
 
     def fit(self, X: pd.DataFrame):
         """
@@ -24,7 +25,7 @@ class DataPipeline:
         X_categorical = X[self.categorical_features]
         
         # 1. Imputer
-        X_numeric_imputed = pp.knn_imputer(X_numeric)
+        X_numeric_imputed = pp.knn_imputer(X_numeric, k=self.n_neighbors)
         X_categorical_imputed = X_categorical.fillna("unknown")
         
         # 2. Encoder
@@ -47,7 +48,7 @@ class DataPipeline:
             raise ValueError("Pipeline has not been fitted yet.")
         
         # 1. Imputer
-        X_numeric_imputed = pp.knn_imputer(X[self.numeric_features])
+        X_numeric_imputed = pp.knn_imputer(X[self.numeric_features], k=self.n_neighbors)
         X_categorical_imputed = X[self.categorical_features].fillna("unknown")
 
         # 2. Encoder

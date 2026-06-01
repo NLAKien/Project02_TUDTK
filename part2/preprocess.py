@@ -4,8 +4,8 @@ import numpy as np
 class OneHotEncoder:
     def __init__(self, drop_first=True):
         self.drop_first = drop_first
-        self.categories_ = {} # Nơi lưu các giá trị duy nhất của từng cột từ tập Train
-        self.feature_names_ = [] # Lưu tên cột sau khi encode để tiện tracking
+        self.categories_ = {} 
+        self.feature_names_ = [] 
 
     def fit(self, X):
         X_df = pd.DataFrame(X) # Ép về DataFrame cho dễ thao tác

@@ -27,16 +27,21 @@ class DataPipeline:
         X_numeric_imputed = pp.knn_imputer(X_numeric)
         X_categorical_imputed = X_categorical.fillna("unknown")
         
-        # 2. Encoder
-        X_encoded = self.encoder.fit_transform(X_categorical_imputed)
-        self.train_encoded_columns_ = X_encoded.columns.values
-
         # 3. Scaler
         X_scaled, self.means_, self.stds_ = pp.standard_scaler(pd.DataFrame(X_numeric_imputed, columns=self.numeric_features))
         
         self.is_fitted = True
-        # ghép encoded dataframe với scaled dataframe
-        X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+
+        # 2. Encoder (chỉ thực hiện khi có cột categorical)
+        if self.categorical_features:
+            X_encoded = self.encoder.fit_transform(X_categorical_imputed)
+            self.train_encoded_columns_ = X_encoded.columns.values
+            # ghép encoded dataframe với scaled dataframe
+            X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+        else:
+            self.train_encoded_columns_ = np.array([])
+            X_processed = X_scaled
+
         return X_processed
 
     def transform(self, X: pd.DataFrame):
@@ -50,17 +55,20 @@ class DataPipeline:
         X_numeric_imputed = pp.knn_imputer(X[self.numeric_features])
         X_categorical_imputed = X[self.categorical_features].fillna("unknown")
 
-        # 2. Encoder
-        X_encoded = self.encoder.transform(X_categorical_imputed)
-        X_encoded = X_encoded[self.train_encoded_columns_]
-
         # 3. Scaler
         # Correct approach — apply train's mean/std manually
         X_numeric_df = pd.DataFrame(X_numeric_imputed, columns=self.numeric_features)
         X_scaled = (X_numeric_df - pd.Series(self.means_)) / pd.Series(self.stds_)
 
-        # ghép encoded dataframe với scaled dataframe
-        X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+        # 2. Encoder (chỉ thực hiện khi có cột categorical)
+        if self.categorical_features:
+            X_encoded = self.encoder.transform(X_categorical_imputed)
+            X_encoded = X_encoded[self.train_encoded_columns_]
+            # ghép encoded dataframe với scaled dataframe
+            X_processed = pd.concat([X_scaled, X_encoded], axis=1)
+        else:
+            X_processed = X_scaled
+
         return X_processed
 
 if __name__ == "__main__":
